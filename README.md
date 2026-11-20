@@ -6,12 +6,38 @@
 > It needs APFS (macOS), Btrfs or XFS. Setup: put [`git-cow-worktree`](git-cow-worktree) on your `PATH`.
 > For Claude Code, add the two hooks in [For you and your agent](#for-you-and-your-agent) and every
 > `--worktree` session and worktree subagent uses CoW too.
+> New to worktrees? Read [What is a git worktree?](#what-is-a-git-worktree) first.
 
 Make a new git worktree as a CoW clone of the one you work in.
 The new worktree shares disk blocks with the original. It also gets your ignored files
 (`node_modules`, build output, caches) with no reinstall.
 
 ![disk blocks: git worktree add against git cow-worktree](docs/blocks.svg)
+
+## What is a git worktree?
+
+A git repository normally has one working folder, so you work on one branch at a time. To switch,
+you stash or commit, then check out the other branch.
+
+A **worktree** is an extra working folder for the same repository. Each worktree has its own branch
+and its own files. All of them share one `.git` (the commits, branches and objects), so a commit in
+one worktree is visible in the others at once.
+
+![one .git with three worktrees, each on its own branch](docs/worktree.svg)
+
+Worktrees let you, or several coding agents, work on different branches at the same time with no
+stash and no switch. The cost: `git worktree add` writes every file again, and the new folder has
+no `node_modules` or build output. This repo removes that cost.
+
+```sh
+git worktree add ../app-fix -b fix/login   # plain worktree
+git worktree list                          # show all worktrees
+git worktree remove ../app-fix             # delete one
+```
+
+**Copy-on-write (CoW)** is a file system feature. A CoW copy of a file shares the disk blocks of the
+original. The file system writes new blocks only for the parts that change. So the copy is almost
+instant and uses almost no space.
 
 ## Why
 
