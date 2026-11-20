@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Claude Code WorktreeRemove hook: removes the worktree only if it has no uncommitted work.
 set -euo pipefail
+export PATH="$HOME/bin:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 input=$(cat)
 path=$(printf '%s' "$input" | sed -n 's/.*"worktree_path" *: *"\([^"]*\)".*/\1/p')
 [[ -n $path && -d $path ]] || exit 0

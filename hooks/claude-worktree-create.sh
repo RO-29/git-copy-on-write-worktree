@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Claude Code WorktreeCreate hook: makes a CoW worktree next to the repo and prints its path.
 set -euo pipefail
+export PATH="$HOME/bin:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 input=$(cat)
 field() { printf '%s' "$input" | sed -n "s/.*\"$1\" *: *\"\([^\"]*\)\".*/\1/p"; }
 name=$(field name); cwd=$(field cwd)
