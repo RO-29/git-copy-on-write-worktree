@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="200" viewBox="0 0 800 200" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
+<defs><marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#656d76"/></marker></defs>
+<style>
+.bg{fill:#ffffff;stroke:#d0d7de}
+.box{fill:#f6f8fa;stroke:#d0d7de;stroke-width:1.5}
+.step .box{animation:pulse 8s infinite both}
+.st{font-size:14px;font-weight:600;fill:#1f2328}
+.cmd{font-size:12.5px;fill:#0969da;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.sub{font-size:11.5px;fill:#656d76}
+.arr{stroke:#656d76;stroke-width:2;fill:none}
+.ttl{font-size:13px;fill:#656d76}
+@keyframes pulse{0%{fill:#f6f8fa;stroke:#d0d7de}4%,22%{fill:#ddf4ff;stroke:#0969da}27%,100%{fill:#f6f8fa;stroke:#d0d7de}}
+</style>
+<rect x="1" y="1" width="798" height="198" rx="10" class="bg"/>
+<text x="20" y="32" class="ttl">git cow-worktree &lt;path&gt; [&lt;commit-ish&gt;] [-b &lt;branch&gt;]</text>
+<g class="step" style="animation-delay:0s"><rect x="20" y="50" width="170" height="96" rx="8" class="box"/></g><text x="105" y="80" class="st" text-anchor="middle">1. Add worktree</text><text x="105" y="106" class="cmd" text-anchor="middle">git worktree add</text><text x="105" y="127" class="sub" text-anchor="middle">--no-checkout</text><path d="M194 98 h17" class="arr" marker-end="url(#m)"/><g class="step" style="animation-delay:2s"><rect x="215" y="50" width="170" height="96" rx="8" class="box"/></g><text x="300" y="80" class="st" text-anchor="middle">2. Clone files</text><text x="300" y="106" class="cmd" text-anchor="middle">cp -c  (macOS)</text><text x="300" y="127" class="sub" text-anchor="middle">cp --reflink  (Linux)</text><path d="M389 98 h17" class="arr" marker-end="url(#m)"/><g class="step" style="animation-delay:4s"><rect x="410" y="50" width="170" height="96" rx="8" class="box"/></g><text x="495" y="80" class="st" text-anchor="middle">3. Move to target</text><text x="495" y="106" class="cmd" text-anchor="middle">git reset --hard</text><text x="495" y="127" class="sub" text-anchor="middle">writes changed files only</text><path d="M584 98 h17" class="arr" marker-end="url(#m)"/><g class="step" style="animation-delay:6s"><rect x="605" y="50" width="170" height="96" rx="8" class="box"/></g><text x="690" y="80" class="st" text-anchor="middle">4. Clean up</text><text x="690" y="106" class="cmd" text-anchor="middle">git clean -fd</text><text x="690" y="127" class="sub" text-anchor="middle">ignored files stay</text>
+<text x="400" y="180" class="ttl" text-anchor="middle">Result: a clean worktree at the target commit, with node_modules and build output already in place</text>
+</svg>

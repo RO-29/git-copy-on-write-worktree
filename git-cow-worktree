@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+# git cow-worktree <path> [<commit-ish>] [git worktree add options]
+# Clones the current worktree with copy-on-write (ignored files too), then resets it to the target commit.
+set -euo pipefail
+
+if [[ $# -lt 1 || $1 == -* ]]; then
+  echo "usage: git cow-worktree <path> [<commit-ish>] [-b <new-branch>] [git worktree add options]" >&2
+  exit 2
+fi
+
+case "$(uname -s)" in
+  Darwin) clone() { cp -cRp "$1" "$2"; } ;;
+  *)      clone() { cp -a --reflink=always "$1" "$2"; } ;;
+esac
+
+dest=$1; shift
+src=$(git rev-parse --show-toplevel)
+
+git worktree add --no-checkout "$dest" "$@"
+dest=$(cd "$dest" && pwd -P)
+
+# Other worktrees that live inside the source tree must not be copied.
+skip=()
+while IFS= read -r line; do
+  [[ $line == worktree\ * ]] && skip+=("${line#worktree }")
+done < <(git -C "$src" worktree list --porcelain)
+
+holds_worktree() {
+  local e=$1 w
+  for w in "${skip[@]}"; do
+    [[ $w == "$src" ]] && continue
+    [[ $w == "$e" || $w == "$e"/* ]] && return 0
+  done
+  return 1
+}
+
+shopt -s dotglob nullglob
+for entry in "$src"/*; do
+  [[ ${entry##*/} == .git ]] && continue
+  if holds_worktree "$entry"; then
+    echo "skip (holds a worktree): ${entry#"$src"/}" >&2
+    continue
+  fi
+  if ! clone "$entry" "$dest"/; then
+    echo "error: copy-on-write clone failed for $entry" >&2
+    echo "       source and target must be on the same APFS, Btrfs or XFS (reflink) volume" >&2
+    exit 1
+  fi
+done
+
+cd "$dest"
+git reset -q
+git update-index -q --refresh >/dev/null || true
+git reset -q --hard
+git clean -fdq
+
+[[ -f .gitmodules ]] && echo "warning: submodules are not handled; run: git submodule update --init" >&2
+echo "cow worktree ready: $dest ($(git rev-parse --abbrev-ref HEAD) @ $(git rev-parse --short HEAD))"
