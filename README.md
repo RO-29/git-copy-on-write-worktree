@@ -1,6 +1,13 @@
-# git cow-worktree
+# Copy-on-write (CoW) git worktrees
 
-Make a new git worktree as a copy-on-write clone of the one you work in.
+> **TL;DR**
+> `git cow-worktree <path> -b <branch>` makes a git worktree as a CoW clone of the one you work in.
+> It takes about 1 s, uses almost no new disk space, and brings `node_modules` and build output with it.
+> It needs APFS (macOS), Btrfs or XFS. Setup: put [`git-cow-worktree`](git-cow-worktree) on your `PATH`.
+> For Claude Code, add the two hooks in [For you and your agent](#for-you-and-your-agent) and every
+> `--worktree` session and worktree subagent uses CoW too.
+
+Make a new git worktree as a CoW clone of the one you work in.
 The new worktree shares disk blocks with the original. It also gets your ignored files
 (`node_modules`, build output, caches) with no reinstall.
 
@@ -12,7 +19,7 @@ The new worktree shares disk blocks with the original. It also gets your ignored
 run `npm install` (or the equivalent) in each new worktree. In a large monorepo this is slow,
 and each worktree uses the full size again on disk.
 
-APFS (macOS), Btrfs and XFS can clone a file. A clone shares the disk blocks of the original
+APFS (macOS), Btrfs and XFS can clone a file (CoW). A clone shares the disk blocks of the original
 until one of the two copies changes. This tool uses that clone for the worktree.
 
 | | `git worktree add` | `git cow-worktree` |
@@ -50,7 +57,7 @@ The result is a clean worktree at the commit you ask for. Your source worktree d
 
    ```sh
    mkdir -p ~/bin
-   curl -fsSL https://raw.githubusercontent.com/RO-29/git-cow-worktree/main/git-cow-worktree -o ~/bin/git-cow-worktree
+   curl -fsSL https://raw.githubusercontent.com/RO-29/git-copy-on-write-worktree/main/git-cow-worktree -o ~/bin/git-cow-worktree
    chmod +x ~/bin/git-cow-worktree
    ```
 
@@ -86,6 +93,69 @@ Remove it the usual way:
 git worktree remove ../app-feature
 ```
 
+## For you and your agent
+
+### You
+
+After [Setup](#setup), use `git cow-worktree` where you used `git worktree add`. Nothing else changes:
+`git worktree list`, `git worktree remove` and branches work as usual.
+
+### Claude Code
+
+Claude Code makes worktrees for `claude --worktree`, for subagents with `isolation: "worktree"`, and for
+background sessions. A `WorktreeCreate` hook replaces how it makes them
+([docs](https://code.claude.com/docs/en/worktrees)).
+
+1. Copy the two hooks from [`hooks/`](hooks) and make them executable:
+
+   ```sh
+   mkdir -p ~/.claude/hooks
+   for f in claude-worktree-create.sh claude-worktree-remove.sh; do
+     curl -fsSL https://raw.githubusercontent.com/RO-29/git-copy-on-write-worktree/main/hooks/$f -o ~/.claude/hooks/$f
+   done
+   chmod +x ~/.claude/hooks/claude-worktree-*.sh
+   ```
+
+2. Add them to `~/.claude/settings.json` (all projects) or `.claude/settings.json` (one project):
+
+   ```json
+   {
+     "hooks": {
+       "WorktreeCreate": [
+         { "hooks": [{ "type": "command", "command": "~/.claude/hooks/claude-worktree-create.sh" }] }
+       ],
+       "WorktreeRemove": [
+         { "hooks": [{ "type": "command", "command": "~/.claude/hooks/claude-worktree-remove.sh" }] }
+       ]
+     }
+   }
+   ```
+
+3. Check: run `claude --worktree test-cow` in a repo. The session starts in
+   `../<repo>-worktrees/test-cow` on branch `worktree-test-cow`, and `node_modules` is already there.
+
+What the hooks do:
+
+- **Create** makes the worktree at `../<repo>-worktrees/<name>` on branch `worktree-<name>` and prints
+  the path. The folder is outside the repo, so the CoW clone never copies one worktree into another.
+- **Remove** runs `git worktree remove` without `--force`. A worktree with uncommitted changes stays on
+  disk. It deletes the branch with `git branch -d`, so a branch with unmerged commits stays.
+- With a `WorktreeCreate` hook, Claude Code does not read `.worktreeinclude`. You do not need it: the CoW
+  clone already brings `.env` and every other ignored file.
+- Claude Code does not run `WorktreeRemove` when a subagent finishes. Remove those worktrees yourself.
+
+### Codex, Cursor and other agents
+
+These agents run `git worktree add` as a shell command. Tell them to use the CoW command. Add this to
+`AGENTS.md`, `CLAUDE.md` or your agent's rules file:
+
+```md
+## Worktrees
+Make worktrees with `git cow-worktree <path> -b <branch> [<base>]`, never `git worktree add`.
+It clones node_modules and build output, so do not run the install step in a new worktree.
+Remove with `git worktree remove <path>`.
+```
+
 ## How to check that it works
 
 ### Run the test
@@ -95,8 +165,8 @@ It checks the branch, the file content at the target commit, the ignored folder,
 `git status`, an unchanged source, and that the clone used less than 100 MB of new space.
 
 ```sh
-git clone https://github.com/RO-29/git-cow-worktree.git
-cd git-cow-worktree
+git clone https://github.com/RO-29/git-copy-on-write-worktree.git
+cd git-copy-on-write-worktree
 bash test/test.sh
 ```
 
